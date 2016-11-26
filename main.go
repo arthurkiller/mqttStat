@@ -1,0 +1,118 @@
+package main
+
+import (
+	"crypto/tls"
+	"flag"
+	"fmt"
+	"log"
+	"net"
+	"time"
+
+	"github.com/arthurkiller/mqttState/packets"
+)
+
+var tcpconn = func(address string) (net.Conn, time.Duration, error) {
+	var err error
+	s := time.Now()
+	conn, err := net.Dial("TCP", address)
+	t := time.Since(s)
+	if err != nil {
+		log.Println(err)
+		return nil, time.Duration(0), err
+	}
+	return conn, t, nil
+}
+
+var udpconn = func(address string) (net.Conn, time.Duration, error) {
+	var err error
+	s := time.Now()
+	conn, err := net.Dial("UDP", address)
+	t := time.Since(s)
+	if err != nil {
+		log.Println(err)
+		return nil, time.Duration(0), err
+	}
+	return conn, t, nil
+}
+
+var dnslookup = func(address string) (string, time.Duration, error) {
+	var err error
+	s := time.Now()
+	ns, err := net.LookupHost("www.baidu.com")
+	t := time.Since(s)
+	if err != nil {
+		log.Println(err)
+		return "", time.Duration(0), err
+	}
+	return ns[0], t, nil
+}
+
+func main() {
+	addr := flag.String("addr", "172.16.200.11:1884", "set for the addr with the style mqtt:// http:// tcp:// ssl://")
+	Num := flag.Int("count", 20, "the testing times count")
+	filter := flag.Int("tlsfilter", 100, "the filter of tls connecting cost")
+	flag.Parse()
+
+	//	var sumdns time.Duration
+	var sumtcp time.Duration
+	var sumtls time.Duration
+	var summqtt time.Duration
+
+	tlsConfig := &tls.Config{InsecureSkipVerify: true, ClientAuth: tls.NoClientCert}
+
+	m := packets.NewControlPacket(packets.Connect).(*packets.ConnectPacket)
+	m.ClientIdentifier = "test"
+	m.ProtocolName = "MQTT"
+	m.ProtocolVersion = byte(4)
+	m.Username = "test"
+	m.Password = []byte{1, 2, 3}
+	m.Keepalive = uint16(1)
+	m.CleanSession = true
+	m.WillFlag = false
+	m.WillRetain = false
+
+	var dailer net.Dialer
+	for i := 0; i < *Num; i++ {
+		//do tcp cost test
+		t1 := time.Now()
+		conn, err := dailer.Dial("tcp", *addr)
+		tt1 := time.Since(t1)
+		if err != nil {
+			log.Println(err)
+		}
+		sumtcp += tt1
+
+		//do tls cost test
+		conntls := tls.Client(conn, tlsConfig)
+		t2 := time.Now()
+		err = conntls.Handshake()
+		tt2 := time.Since(t2)
+		if err != nil {
+			log.Println(err)
+		}
+		sumtls += tt2
+
+		//do mqtt test
+		t3 := time.Now()
+		m.Write(conntls)
+		ca, err := packets.ReadPacket(conntls)
+		tt3 := time.Since(t3)
+		if _, ok := ca.(*packets.ConnackPacket); err != nil || !ok {
+			log.Println(err)
+		}
+		summqtt += tt3
+
+		//do print
+		fil := time.Duration(time.Millisecond * time.Duration(*filter))
+		if tt1 > fil || tt2 > (fil+time.Duration(50)*time.Millisecond) || tt3 > fil {
+			fmt.Printf("%c[1;40;31mIn connection sequence%4v: costs %12v %12v %12v %c[0m\n", 0x1B, i, tt1.String(), tt2.String(), tt3.String(), 0x1B)
+		} else {
+			fmt.Printf("In connection sequence%4v: costs %12v %12v %12v \n", i, tt1.String(), tt2.String(), tt3.String())
+		}
+		conntls.Close()
+		conn.Close()
+	}
+	fmt.Println("tcp cost:", (sumtcp / time.Duration(*Num)).String())
+	fmt.Println("tls cost:", (sumtls / time.Duration(*Num)).String())
+	fmt.Println("mqtt cost:", (summqtt / time.Duration(*Num)).String())
+}
