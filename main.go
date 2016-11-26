@@ -75,7 +75,9 @@ func main() {
 	num := flag.Int("count", 20, "the testing secquence times")
 	ca := flag.String("ca", "", "set the certific key path")
 	pem := flag.String("pem", "", "set the certific pem path")
-	filter := flag.Int("tlsfilter", 100, "the filter of tls connecting cost")
+	tcpfilter := flag.Int("tcpfilter", 100, "the filter of tcp connecting cost")
+	tlsfilter := flag.Int("tlsfilter", 150, "the filter of tls connecting cost")
+	mqttfilter := flag.Int("mqttfilter", 100, "the filter of mqtt connecting cost")
 	flag.Parse()
 	_ = ca
 
@@ -184,11 +186,23 @@ func main() {
 		summqtt += t3
 
 		//do print
-		fil := time.Duration(time.Millisecond * time.Duration(*filter))
-		if t1 > fil || t2 > (fil+time.Duration(50)*time.Millisecond) || t3 > fil {
-			fmt.Printf("%c[1;40;31mIn connection sequence%4v: costs %12v %12v %12v %c[0m\n", 0x1B, i, t1.String(), t2.String(), t3.String(), 0x1B)
+		trans := func(filter int) time.Duration {
+			return time.Duration(time.Millisecond * time.Duration(filter))
+		}
+
+		if needDNS {
+			if t1 > trans(*tcpfilter) || t2 > trans(*tlsfilter) || t3 > trans(*mqttfilter) {
+				fmt.Printf("%c[1;40;31mIn connection sequence%4v: costs %12v %12v %12v %12v %c[0m\n", 0x1B, i, t0.String(), t1.String(), t2.String(), t3.String(), 0x1B)
+			} else {
+				fmt.Printf("In connection sequence%4v: costs %12v %12v %12v %12v \n", i, t0.String(), t1.String(), t2.String(), t3.String())
+			}
 		} else {
-			fmt.Printf("In connection sequence%4v: costs %12v %12v %12v \n", i, t1.String(), t2.String(), t3.String())
+			if t1 > trans(*tcpfilter) || t2 > trans(*tlsfilter) || t3 > trans(*mqttfilter) {
+				fmt.Printf("%c[1;40;31mIn connection sequence%4v: costs %12v %12v %12v %c[0m\n", 0x1B, i, t1.String(), t2.String(), t3.String(), 0x1B)
+			} else {
+				fmt.Printf("In connection sequence%4v: costs %12v %12v %12v \n", i, t1.String(), t2.String(), t3.String())
+			}
+
 		}
 		conn.Close()
 	}
