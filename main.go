@@ -142,7 +142,7 @@ func main() {
 
 	for i := 0; i < *num; i++ {
 		var server string
-		var t0 time.Duration
+		var t0 time.Duration = 0
 		if needDNS {
 			s, t, err := dnslookup(ss[1])
 			_ = server
@@ -162,7 +162,7 @@ func main() {
 		sumtcp += t1
 
 		//do tls cost test
-		var t2 time.Duration
+		var t2 time.Duration = 0
 		if withTLS {
 			conntls, t, err := tlshandshake(conn, tlsConfig)
 			if err != nil {
