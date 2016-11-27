@@ -91,6 +91,12 @@ func main() {
 	var sumtcp time.Duration
 	var sumtls time.Duration
 	var summqtt time.Duration
+
+	var countdns int
+	var counttcp int
+	var counttls int
+	var countmqtt int
+
 	var withTLS bool = false
 	var needDNS bool = true
 	var tlsConfig = &tls.Config{}
@@ -145,35 +151,40 @@ func main() {
 		var t0 time.Duration = 0
 		if needDNS {
 			s, t, err := dnslookup(ss[1])
-			_ = server
 			if err != nil {
-				log.Println(err)
+				log.Fatalln(err)
 			}
 			t0 = t
 			server = s
 			sumdns += t0
+			countdns++
 		}
 
 		//do tcp cost test
 		conn, t1, err := tcpconn(server)
 		if err != nil {
 			log.Println(err)
+			t1 = 0
+		} else {
+			sumtcp += t1
+			counttcp++
 		}
-		sumtcp += t1
 
 		//do tls cost test
 		var t2 time.Duration = 0
 		if withTLS {
 			conntls, t, err := tlshandshake(conn, tlsConfig)
 			if err != nil {
-				log.Println(err)
+				log.Fatalln(err)
+			} else {
+				conn = conntls
+				t2 = t
+				sumtls += t
+				counttls++
 			}
-			conn = conntls
-			t2 = t
-			sumtls += t
 		}
 
-		//with http
+		//TODO with http
 
 		//do mqtt test
 		t := time.Now()
@@ -182,8 +193,11 @@ func main() {
 		t3 := time.Since(t)
 		if _, ok := ca.(*packets.ConnackPacket); err != nil || !ok {
 			log.Println(err, ca)
+			t3 = 0
+		} else {
+			summqtt += t3
+			countmqtt++
 		}
-		summqtt += t3
 
 		//do print
 		trans := func(filter int) time.Duration {
@@ -224,11 +238,11 @@ func main() {
 
 	//summary
 	if needDNS {
-		fmt.Println("nds cost:", (sumdns / time.Duration(*num)).String())
+		fmt.Println("nds cost:", (sumdns / time.Duration(countdns)).String())
 	}
-	fmt.Println("tcp cost:", (sumtcp / time.Duration(*num)).String())
+	fmt.Println("tcp cost:", (sumtcp / time.Duration(counttcp)).String())
 	if withTLS {
-		fmt.Println("tls cost:", (sumtls / time.Duration(*num)).String())
+		fmt.Println("tls cost:", (sumtls / time.Duration(counttls)).String())
 	}
-	fmt.Println("mqtt cost:", (summqtt / time.Duration(*num)).String())
+	fmt.Println("mqtt cost:", (summqtt / time.Duration(countmqtt)).String())
 }
