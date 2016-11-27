@@ -191,22 +191,44 @@ func main() {
 		}
 
 		if needDNS {
-			if t1 > trans(*tcpfilter) || t2 > trans(*tlsfilter) || t3 > trans(*mqttfilter) {
-				fmt.Printf("%c[1;40;31mIn connection sequence%4v: costs %12v %12v %12v %12v %c[0m\n", 0x1B, i, t0.String(), t1.String(), t2.String(), t3.String(), 0x1B)
+			if withTLS {
+				if t1 > trans(*tcpfilter) || t2 > trans(*tlsfilter) || t3 > trans(*mqttfilter) {
+					fmt.Printf("%c[1;40;31mIn connection sequence%4v: costs %12v %12v %12v %12v %c[0m\n", 0x1B, i, t0.String(), t1.String(), t2.String(), t3.String(), 0x1B)
+				} else {
+					fmt.Printf("In connection sequence%4v: costs %12v %12v %12v %12v \n", i, t0.String(), t1.String(), t2.String(), t3.String())
+				}
 			} else {
-				fmt.Printf("In connection sequence%4v: costs %12v %12v %12v %12v \n", i, t0.String(), t1.String(), t2.String(), t3.String())
+				if t1 > trans(*tcpfilter) || t2 > trans(*tlsfilter) || t3 > trans(*mqttfilter) {
+					fmt.Printf("%c[1;40;31mIn connection sequence%4v: costs %12v %12v %12v %c[0m\n", 0x1B, i, t0.String(), t1.String(), t3.String(), 0x1B)
+				} else {
+					fmt.Printf("In connection sequence%4v: costs %12v %12v %12v \n", i, t0.String(), t1.String(), t3.String())
+				}
 			}
 		} else {
-			if t1 > trans(*tcpfilter) || t2 > trans(*tlsfilter) || t3 > trans(*mqttfilter) {
-				fmt.Printf("%c[1;40;31mIn connection sequence%4v: costs %12v %12v %12v %c[0m\n", 0x1B, i, t1.String(), t2.String(), t3.String(), 0x1B)
+			if withTLS {
+				if t1 > trans(*tcpfilter) || t2 > trans(*tlsfilter) || t3 > trans(*mqttfilter) {
+					fmt.Printf("%c[1;40;31mIn connection sequence%4v: costs %12v %12v %12v %c[0m\n", 0x1B, i, t1.String(), t2.String(), t3.String(), 0x1B)
+				} else {
+					fmt.Printf("In connection sequence%4v: costs %12v %12v %12v \n", i, t1.String(), t2.String(), t3.String())
+				}
 			} else {
-				fmt.Printf("In connection sequence%4v: costs %12v %12v %12v \n", i, t1.String(), t2.String(), t3.String())
+				if t1 > trans(*tcpfilter) || t2 > trans(*tlsfilter) || t3 > trans(*mqttfilter) {
+					fmt.Printf("%c[1;40;31mIn connection sequence%4v: costs %12v %12v %c[0m\n", 0x1B, i, t1.String(), t3.String(), 0x1B)
+				} else {
+					fmt.Printf("In connection sequence%4v: costs %12v %12v \n", i, t1.String(), t3.String())
+				}
 			}
-
 		}
 		conn.Close()
 	}
+
+	//summary
+	if needDNS {
+		fmt.Println("nds cost:", (sumdns / time.Duration(*num)).String())
+	}
 	fmt.Println("tcp cost:", (sumtcp / time.Duration(*num)).String())
-	fmt.Println("tls cost:", (sumtls / time.Duration(*num)).String())
+	if withTLS {
+		fmt.Println("tls cost:", (sumtls / time.Duration(*num)).String())
+	}
 	fmt.Println("mqtt cost:", (summqtt / time.Duration(*num)).String())
 }
