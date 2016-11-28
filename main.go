@@ -53,12 +53,12 @@ var tlshandshake = func(conn net.Conn, cfg *tls.Config) (net.Conn, time.Duration
 
 var httprequest = func() {}
 
-var buildMQTTpacket = func() packets.ControlPacket {
+var buildMQTTpacket = func(name, passwd string) packets.ControlPacket {
 	mp := packets.NewControlPacket(packets.Connect).(*packets.ConnectPacket)
 	mp.ClientIdentifier = "test"
 	mp.ProtocolName = "MQTT"
 	mp.ProtocolVersion = byte(4)
-	mp.Username = "test"
+	mp.Username = name
 	mp.Qos = 1
 	mp.Keepalive = uint16(1)
 	mp.CleanSession = true
@@ -66,13 +66,20 @@ var buildMQTTpacket = func() packets.ControlPacket {
 	mp.WillRetain = false
 	mp.Dup = false
 	mp.PasswordFlag = false
+	if passwd != "" {
+		mp.PasswordFlag = true
+		mp.Password = []byte(passwd)
+	}
 	mp.Retain = false
 	return mp
 }
 
 func main() {
 	addr := flag.String("server", "tls://172.16.200.11:1884", "set for the addr with the style tcp:// | tls:// | http:// | https://")
-	num := flag.Int("count", 20, "the testing secquence times")
+	num := flag.Int("count", 1, "the testing secquence times")
+	port := flag.String("port", "1883", "the mqtt broker port")
+	name := flag.String("name", "test", "set the name for mqtt")
+	passwd := flag.String("passwd", "", "set the passwd if needed")
 	ca := flag.String("ca", "", "set the certific key path")
 	pem := flag.String("pem", "", "set the certific pem path")
 	tcpfilter := flag.Int("tcpfilter", 100, "the filter of tcp connecting cost")
@@ -86,8 +93,10 @@ func main() {
 		flag.Usage()
 		return
 	}
-	var port string = ":" + strings.Split(ss[1], ":")[1]
-	var server string = ss[1]
+	if len(strings.Split(ss[1], ":")) != 1 {
+		*port = ss[1]
+	}
+	var server string = ss[1] + ":" + *port
 
 	var sumdns time.Duration
 	var sumtcp time.Duration
@@ -146,7 +155,7 @@ func main() {
 	} else {
 		tlsConfig = &tls.Config{InsecureSkipVerify: true, ClientAuth: tls.NoClientCert}
 	}
-	mp := buildMQTTpacket()
+	mp := buildMQTTpacket(*name, *passwd)
 	//
 	if needDNS {
 		ts, _, _ := dnslookup(ss[1])
@@ -164,7 +173,7 @@ func main() {
 				log.Fatalln(err)
 			}
 			t0 = t
-			server = s + port
+			server = s + ":" + *port
 			sumdns += t0
 			countdns++
 		}
@@ -172,7 +181,7 @@ func main() {
 		//do tcp cost test
 		conn, t1, err := tcpconn(server)
 		if err != nil {
-			log.Println(err)
+			log.Fatalln(err)
 			t1 = 0
 			continue
 		} else {
@@ -200,12 +209,12 @@ func main() {
 		t := time.Now()
 		err = mp.Write(conn)
 		if err != nil {
-			log.Println(err)
+			log.Fatalln(err)
 		}
 		ca, err := packets.ReadPacket(conn)
 		t3 := time.Since(t)
 		if _, ok := ca.(*packets.ConnackPacket); err != nil || !ok {
-			log.Println(err, ca)
+			log.Fatalln(err, ca)
 			t3 = 0
 		} else {
 			summqtt += t3
@@ -267,36 +276,37 @@ func main() {
 	avgmqtt := (summqtt / time.Duration(countmqtt)).Nanoseconds() / 1000000
 
 	sumt := avgdns + avgtcp + avgtls + avgmqtt
-	avgdns = int64(float32(avgdns) / float32(sumt) * 50)
-	avgtcp = int64(float32(avgtcp) / float32(sumt) * 50)
-	avgtls = int64(float32(avgtls) / float32(sumt) * 50)
-	avgmqtt = int64(float32(avgmqtt) / float32(sumt) * 50)
-
-	var i int64 = 0
-	var sb string = ""
-	fmt.Println()
-	if needDNS {
-		fmt.Print("avg DNS lookup cost | ")
-		for i = 0; i < avgdns; i++ {
+	if sumt != 0 {
+		avgdns = int64(float32(avgdns) / float32(sumt) * 50)
+		avgtcp = int64(float32(avgtcp) / float32(sumt) * 50)
+		avgtls = int64(float32(avgtls) / float32(sumt) * 50)
+		avgmqtt = int64(float32(avgmqtt) / float32(sumt) * 50)
+		var i int64 = 0
+		var sb string = ""
+		fmt.Println()
+		if needDNS {
+			fmt.Print("avg DNS lookup cost | ")
+			for i = 0; i < avgdns; i++ {
+				sb += "*"
+			}
+			sb += "|"
+		}
+		fmt.Print("avg tcp connect cost | ")
+		for i = 0; i < avgtcp; i++ {
 			sb += "*"
 		}
 		sb += "|"
-	}
-	fmt.Print("avg tcp connect cost | ")
-	for i = 0; i < avgtcp; i++ {
-		sb += "*"
-	}
-	sb += "|"
-	if withTLS {
-		fmt.Print("avg tls handshake cost | ")
-		for i = 0; i < avgtls; i++ {
+		if withTLS {
+			fmt.Print("avg tls handshake cost | ")
+			for i = 0; i < avgtls; i++ {
+				sb += "*"
+			}
+			sb += "|"
+		}
+		fmt.Print("avg mqtt connect cost \n")
+		for i = 0; i < avgmqtt; i++ {
 			sb += "*"
 		}
-		sb += "|"
+		fmt.Println(sb)
 	}
-	fmt.Print("avg mqtt connect cost \n")
-	for i = 0; i < avgmqtt; i++ {
-		sb += "*"
-	}
-	fmt.Println(sb)
 }
