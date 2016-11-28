@@ -29,7 +29,7 @@ var tcpconn = func(address string) (net.Conn, time.Duration, error) {
 var dnslookup = func(address string) (string, time.Duration, error) {
 	var err error
 	s := time.Now()
-	ns, err := net.LookupHost("www.baidu.com")
+	ns, err := net.LookupHost(address)
 	t := time.Since(s)
 	if err != nil {
 		log.Println(err)
@@ -259,6 +259,7 @@ func main() {
 	var avgtls int64 = 0
 
 	//summary
+	fmt.Println()
 	if needDNS {
 		fmt.Println("Avg DNS lookup cost:", (sumdns / time.Duration(countdns)).String())
 		avgdns = (sumdns / time.Duration(countdns)).Nanoseconds() / 1000000
@@ -299,7 +300,7 @@ func main() {
 		}
 		sb += "|"
 	}
-	fmt.Print("avg mqtt connect cost \n")
+	fmt.Printf("avg mqtt connect cost | total %v\n", time.Duration(sumt*1000000).String())
 	for i = 0; i < avgmqtt; i++ {
 		sb += "*"
 	}
