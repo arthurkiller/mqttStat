@@ -59,13 +59,13 @@ var buildMQTTpacket = func() packets.ControlPacket {
 	mp.ProtocolName = "MQTT"
 	mp.ProtocolVersion = byte(4)
 	mp.Username = "test"
+	mp.Qos = 1
 	mp.Keepalive = uint16(1)
 	mp.CleanSession = true
 	mp.WillFlag = false
 	mp.WillRetain = false
 	mp.Dup = false
 	mp.PasswordFlag = false
-	mp.Qos = 1
 	mp.Retain = false
 	return mp
 }
@@ -86,6 +86,7 @@ func main() {
 		flag.Usage()
 		return
 	}
+	var port string = ":" + strings.Split(ss[1], ":")[1]
 	var server string = ss[1]
 
 	var sumdns time.Duration
@@ -145,8 +146,15 @@ func main() {
 	} else {
 		tlsConfig = &tls.Config{InsecureSkipVerify: true, ClientAuth: tls.NoClientCert}
 	}
-
 	mp := buildMQTTpacket()
+	//
+	if needDNS {
+		ts, _, _ := dnslookup(ss[1])
+		fmt.Println(ts)
+	}
+	if withTLS {
+		fmt.Println("with tls hand shake")
+	}
 
 	for i := 0; i < *num; i++ {
 		var t0 time.Duration = 0
@@ -156,7 +164,7 @@ func main() {
 				log.Fatalln(err)
 			}
 			t0 = t
-			server = s
+			server = s + port
 			sumdns += t0
 			countdns++
 		}
@@ -166,6 +174,7 @@ func main() {
 		if err != nil {
 			log.Println(err)
 			t1 = 0
+			continue
 		} else {
 			sumtcp += t1
 			counttcp++
@@ -189,7 +198,10 @@ func main() {
 
 		//do mqtt test
 		t := time.Now()
-		mp.Write(conn)
+		err = mp.Write(conn)
+		if err != nil {
+			log.Println(err)
+		}
 		ca, err := packets.ReadPacket(conn)
 		t3 := time.Since(t)
 		if _, ok := ca.(*packets.ConnackPacket); err != nil || !ok {
@@ -237,13 +249,54 @@ func main() {
 		conn.Close()
 	}
 
+	var avgdns int64 = 0
+	var avgtls int64 = 0
+
 	//summary
 	if needDNS {
-		fmt.Println("nds cost:", (sumdns / time.Duration(countdns)).String())
+		fmt.Println("Avg DNS lookup cost:", (sumdns / time.Duration(countdns)).String())
+		avgdns = (sumdns / time.Duration(countdns)).Nanoseconds() / 1000000
 	}
-	fmt.Println("tcp cost:", (sumtcp / time.Duration(counttcp)).String())
+	fmt.Println("Avg tcp connection cost:", (sumtcp / time.Duration(counttcp)).String())
+	avgtcp := (sumtcp / time.Duration(counttcp)).Nanoseconds() / 1000000
 	if withTLS {
-		fmt.Println("tls cost:", (sumtls / time.Duration(counttls)).String())
+		fmt.Println("Avg tls handshake cost:", (sumtls / time.Duration(counttls)).String())
+		avgtls = (sumtls / time.Duration(counttls)).Nanoseconds() / 1000000
 	}
-	fmt.Println("mqtt cost:", (summqtt / time.Duration(countmqtt)).String())
+	fmt.Println("Avg mqtt connection cost:", (summqtt / time.Duration(countmqtt)).String())
+	avgmqtt := (summqtt / time.Duration(countmqtt)).Nanoseconds() / 1000000
+
+	sumt := avgdns + avgtcp + avgtls + avgmqtt
+	avgdns = int64(float32(avgdns) / float32(sumt) * 50)
+	avgtcp = int64(float32(avgtcp) / float32(sumt) * 50)
+	avgtls = int64(float32(avgtls) / float32(sumt) * 50)
+	avgmqtt = int64(float32(avgmqtt) / float32(sumt) * 50)
+
+	var i int64 = 0
+	var sb string = ""
+	fmt.Println()
+	if needDNS {
+		fmt.Print("avg DNS lookup cost | ")
+		for i = 0; i < avgdns; i++ {
+			sb += "*"
+		}
+		sb += "|"
+	}
+	fmt.Print("avg tcp connect cost | ")
+	for i = 0; i < avgtcp; i++ {
+		sb += "*"
+	}
+	sb += "|"
+	if withTLS {
+		fmt.Print("avg tls handshake cost | ")
+		for i = 0; i < avgtls; i++ {
+			sb += "*"
+		}
+		sb += "|"
+	}
+	fmt.Print("avg mqtt connect cost \n")
+	for i = 0; i < avgmqtt; i++ {
+		sb += "*"
+	}
+	fmt.Println(sb)
 }
