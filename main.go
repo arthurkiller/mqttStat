@@ -17,7 +17,7 @@ import (
 var tcpconn = func(address string) (net.Conn, time.Duration, error) {
 	var err error
 	s := time.Now()
-	conn, err := net.DialTimeout("TCP", address, 5*time.Second)
+	conn, err := net.DialTimeout("tcp", address, 5*time.Second)
 	t := time.Since(s)
 	if err != nil {
 		log.Println(err)
@@ -86,6 +86,7 @@ func main() {
 		flag.Usage()
 		return
 	}
+	var server string = ss[1]
 
 	var sumdns time.Duration
 	var sumtcp time.Duration
@@ -104,6 +105,7 @@ func main() {
 	if ss[0] == "https" || ss[0] == "tls" {
 		withTLS = true
 	}
+
 	if ss[1][0] <= 57 && ss[1][0] >= 48 {
 		needDNS = false
 	}
@@ -147,7 +149,6 @@ func main() {
 	mp := buildMQTTpacket()
 
 	for i := 0; i < *num; i++ {
-		var server string
 		var t0 time.Duration = 0
 		if needDNS {
 			s, t, err := dnslookup(ss[1])
