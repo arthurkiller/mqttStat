@@ -162,7 +162,7 @@ func main() {
 		fmt.Println(ts)
 	}
 
-	for i := 0; i < *num; i++ {
+	for i := 1; i <= *num; i++ {
 		var t0 time.Duration = 0
 		if needDNS {
 			s, t, err := dnslookup(ss[1])
