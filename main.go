@@ -161,16 +161,13 @@ func main() {
 		ts, _, _ := dnslookup(ss[1])
 		fmt.Println(ts)
 	}
-	if withTLS {
-		fmt.Println("with tls hand shake")
-	}
 
 	for i := 0; i < *num; i++ {
 		var t0 time.Duration = 0
 		if needDNS {
 			s, t, err := dnslookup(ss[1])
 			if err != nil {
-				log.Fatalln(err)
+				log.Fatalln("error in lookup dns", err)
 			}
 			t0 = t
 			server = s + ":" + *port
@@ -181,7 +178,7 @@ func main() {
 		//do tcp cost test
 		conn, t1, err := tcpconn(server)
 		if err != nil {
-			log.Fatalln(err)
+			log.Fatalln("error in tcp conn", err)
 			t1 = 0
 			continue
 		} else {
@@ -194,7 +191,7 @@ func main() {
 		if withTLS {
 			conntls, t, err := tlshandshake(conn, tlsConfig)
 			if err != nil {
-				log.Fatalln(err)
+				log.Fatalln("error in tls handshake", err)
 			} else {
 				conn = conntls
 				t2 = t
@@ -209,12 +206,12 @@ func main() {
 		t := time.Now()
 		err = mp.Write(conn)
 		if err != nil {
-			log.Fatalln(err)
+			log.Fatalln("error in write conn packet", err)
 		}
 		ca, err := packets.ReadPacket(conn)
 		t3 := time.Since(t)
 		if _, ok := ca.(*packets.ConnackPacket); err != nil || !ok {
-			log.Fatalln(err, ca)
+			log.Fatalln("error in read ack", err, ca)
 			t3 = 0
 		} else {
 			summqtt += t3
@@ -276,37 +273,35 @@ func main() {
 	avgmqtt := (summqtt / time.Duration(countmqtt)).Nanoseconds() / 1000000
 
 	sumt := avgdns + avgtcp + avgtls + avgmqtt
-	if sumt != 0 {
-		avgdns = int64(float32(avgdns) / float32(sumt) * 50)
-		avgtcp = int64(float32(avgtcp) / float32(sumt) * 50)
-		avgtls = int64(float32(avgtls) / float32(sumt) * 50)
-		avgmqtt = int64(float32(avgmqtt) / float32(sumt) * 50)
-		var i int64 = 0
-		var sb string = ""
-		fmt.Println()
-		if needDNS {
-			fmt.Print("avg DNS lookup cost | ")
-			for i = 0; i < avgdns; i++ {
-				sb += "*"
-			}
-			sb += "|"
-		}
-		fmt.Print("avg tcp connect cost | ")
-		for i = 0; i < avgtcp; i++ {
+	avgdns = int64(float32(avgdns) / float32(sumt) * 50)
+	avgtcp = int64(float32(avgtcp) / float32(sumt) * 50)
+	avgtls = int64(float32(avgtls) / float32(sumt) * 50)
+	avgmqtt = int64(float32(avgmqtt) / float32(sumt) * 50)
+	var i int64 = 0
+	var sb string = ""
+	fmt.Println()
+	if needDNS {
+		fmt.Print("avg DNS lookup cost | ")
+		for i = 0; i < avgdns; i++ {
 			sb += "*"
 		}
 		sb += "|"
-		if withTLS {
-			fmt.Print("avg tls handshake cost | ")
-			for i = 0; i < avgtls; i++ {
-				sb += "*"
-			}
-			sb += "|"
-		}
-		fmt.Print("avg mqtt connect cost \n")
-		for i = 0; i < avgmqtt; i++ {
+	}
+	fmt.Print("avg tcp connect cost | ")
+	for i = 0; i < avgtcp; i++ {
+		sb += "*"
+	}
+	sb += "|"
+	if withTLS {
+		fmt.Print("avg tls handshake cost | ")
+		for i = 0; i < avgtls; i++ {
 			sb += "*"
 		}
-		fmt.Println(sb)
+		sb += "|"
 	}
+	fmt.Print("avg mqtt connect cost \n")
+	for i = 0; i < avgmqtt; i++ {
+		sb += "*"
+	}
+	fmt.Println(sb)
 }
