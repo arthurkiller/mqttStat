@@ -82,9 +82,9 @@ func main() {
 	passwd := flag.String("passwd", "", "set the passwd if needed")
 	ca := flag.String("ca", "", "set the certific key path")
 	pem := flag.String("pem", "", "set the certific pem path")
-	tcpfilter := flag.Int("tcpfilter", 100, "the filter of tcp connecting cost")
-	tlsfilter := flag.Int("tlsfilter", 150, "the filter of tls connecting cost")
-	mqttfilter := flag.Int("mqttfilter", 100, "the filter of mqtt connecting cost")
+	tcpfilter := flag.Int("tcpfilter", 50, "the filter of tcp connecting cost")
+	tlsfilter := flag.Int("tlsfilter", 100, "the filter of tls connecting cost")
+	mqttfilter := flag.Int("mqttfilter", 50, "the filter of mqtt connecting cost")
 	flag.Parse()
 	_ = ca
 
@@ -279,30 +279,34 @@ func main() {
 	avgtls = int64(float32(avgtls) / float32(sumt) * 50)
 	avgmqtt = int64(float32(avgmqtt) / float32(sumt) * 50)
 	var i int64 = 0
-	var sb string = ""
 	fmt.Println()
+	bar := ""
 	if needDNS {
-		fmt.Print("avg DNS lookup cost | ")
+		fmt.Printf("%25v", "avg DNS lookup cost | ")
 		for i = 0; i < avgdns; i++ {
-			sb += "*"
+			bar += "*"
 		}
-		sb += "|"
+		fmt.Println(bar)
 	}
-	fmt.Print("avg tcp connect cost | ")
+	fmt.Printf("%25v", "avg tcp connect cost | ")
+	bar = ""
 	for i = 0; i < avgtcp; i++ {
-		sb += "*"
+		bar += "*"
 	}
-	sb += "|"
+	fmt.Println(bar)
+	bar = ""
 	if withTLS {
-		fmt.Print("avg tls handshake cost | ")
+		fmt.Printf("%25v", "avg tls handshake cost | ")
 		for i = 0; i < avgtls; i++ {
-			sb += "*"
+			bar += "*"
 		}
-		sb += "|"
+		fmt.Println(bar)
 	}
-	fmt.Printf("avg mqtt connect cost | total %v\n", time.Duration(sumt*1000000).String())
+	bar = ""
+	fmt.Printf("%25v", "avg mqtt connect cost | ")
 	for i = 0; i < avgmqtt; i++ {
-		sb += "*"
+		bar += "*"
 	}
-	fmt.Println(sb)
+	fmt.Println(bar)
+	fmt.Printf("total: %v\n", time.Duration(sumt*1000000).String())
 }
