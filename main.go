@@ -261,16 +261,16 @@ func main() {
 	//summary
 	fmt.Println()
 	if needDNS {
-		fmt.Println("Avg DNS lookup cost:", (sumdns / time.Duration(countdns)).String())
+		fmt.Println("Avg DNS lookup cost:\t\t", (sumdns / time.Duration(countdns)).String())
 		avgdns = (sumdns / time.Duration(countdns)).Nanoseconds() / 1000000
 	}
-	fmt.Println("Avg tcp connection cost:", (sumtcp / time.Duration(counttcp)).String())
+	fmt.Println("Avg tcp connection cost:\t", (sumtcp / time.Duration(counttcp)).String())
 	avgtcp := (sumtcp / time.Duration(counttcp)).Nanoseconds() / 1000000
 	if withTLS {
-		fmt.Println("Avg tls handshake cost:", (sumtls / time.Duration(counttls)).String())
+		fmt.Println("Avg tls handshake cost:\t\t", (sumtls / time.Duration(counttls)).String())
 		avgtls = (sumtls / time.Duration(counttls)).Nanoseconds() / 1000000
 	}
-	fmt.Println("Avg mqtt connection cost:", (summqtt / time.Duration(countmqtt)).String())
+	fmt.Println("Avg mqtt connection cost:\t", (summqtt / time.Duration(countmqtt)).String())
 	avgmqtt := (summqtt / time.Duration(countmqtt)).Nanoseconds() / 1000000
 
 	sumt := avgdns + avgtcp + avgtls + avgmqtt
@@ -282,13 +282,13 @@ func main() {
 	fmt.Println()
 	bar := ""
 	if needDNS {
-		fmt.Printf("%25v", "avg DNS lookup cost | ")
+		fmt.Printf("%25v", "Avg DNS lookup cost | ")
 		for i = 0; i < avgdns; i++ {
 			bar += "*"
 		}
 		fmt.Println(bar)
 	}
-	fmt.Printf("%25v", "avg tcp connect cost | ")
+	fmt.Printf("%25v", "Avg tcp connect cost | ")
 	bar = ""
 	for i = 0; i < avgtcp; i++ {
 		bar += "*"
@@ -296,14 +296,14 @@ func main() {
 	fmt.Println(bar)
 	bar = ""
 	if withTLS {
-		fmt.Printf("%25v", "avg tls handshake cost | ")
+		fmt.Printf("%25v", "Avg tls handshake cost | ")
 		for i = 0; i < avgtls; i++ {
 			bar += "*"
 		}
 		fmt.Println(bar)
 	}
 	bar = ""
-	fmt.Printf("%25v", "avg mqtt connect cost | ")
+	fmt.Printf("%25v", "Avg mqtt connect cost | ")
 	for i = 0; i < avgmqtt; i++ {
 		bar += "*"
 	}
