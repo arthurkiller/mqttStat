@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/arthurkiller/mqttState/packets"
+	"github.com/arthurkiller/mqttStat/packets"
 )
 
 var tcpconn = func(address string) (net.Conn, time.Duration, error) {
@@ -74,8 +74,13 @@ var buildMQTTpacket = func(name, passwd string) packets.ControlPacket {
 	return mp
 }
 
+var buildMQTTPingPongpacket = func(name, passwd string) packets.ControlPacket {
+	mp := packets.NewControlPacket(packets.Pingreq).(*packets.PingreqPacket)
+	return mp
+}
+
 func main() {
-	addr := flag.String("server", "tls://172.16.200.11:1884", "set for the addr with the style tcp:// | tls:// | http:// | https://")
+	addr := flag.String("server", "tls://127.0.0.0:1884", "set for the addr with the style tcp:// | tls:// | http:// | https://")
 	num := flag.Int("count", 1, "the testing secquence times")
 	port := flag.String("port", "1883", "the mqtt broker port")
 	name := flag.String("name", "test", "set the name for mqtt")
@@ -85,6 +90,7 @@ func main() {
 	tcpfilter := flag.Int("tcpfilter", 50, "the filter of tcp connecting cost")
 	tlsfilter := flag.Int("tlsfilter", 100, "the filter of tls connecting cost")
 	mqttfilter := flag.Int("mqttfilter", 50, "the filter of mqtt connecting cost")
+	ping := flag.Bool("ping", false, "do the ping pong test")
 	flag.Parse()
 	_ = ca
 
@@ -156,6 +162,9 @@ func main() {
 		tlsConfig = &tls.Config{InsecureSkipVerify: true, ClientAuth: tls.NoClientCert}
 	}
 	mp := buildMQTTpacket(*name, *passwd)
+	if *ping {
+		mp = buildMQTTpacket(*name, *passwd)
+	}
 	//
 	if needDNS {
 		ts, _, _ := dnslookup(ss[1])
