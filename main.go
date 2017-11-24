@@ -74,7 +74,7 @@ var buildMQTTpacket = func(name, passwd string) packets.ControlPacket {
 	return mp
 }
 
-var buildMQTTPingPongpacket = func(name, passwd string) packets.ControlPacket {
+var buildMQTTPingPongpacket = func() packets.ControlPacket {
 	mp := packets.NewControlPacket(packets.Pingreq).(*packets.PingreqPacket)
 	return mp
 }
@@ -162,9 +162,6 @@ func main() {
 		tlsConfig = &tls.Config{InsecureSkipVerify: true, ClientAuth: tls.NoClientCert}
 	}
 	mp := buildMQTTpacket(*name, *passwd)
-	if *ping {
-		mp = buildMQTTpacket(*name, *passwd)
-	}
 	//
 	if needDNS {
 		ts, _, _ := dnslookup(ss[1])
@@ -212,19 +209,47 @@ func main() {
 		//TODO with http
 
 		//do mqtt test
-		t := time.Now()
-		err = mp.Write(conn)
-		if err != nil {
-			log.Fatalln("error in write conn packet", err)
-		}
-		ca, err := packets.ReadPacket(conn)
-		t3 := time.Since(t)
-		if _, ok := ca.(*packets.ConnackPacket); err != nil || !ok {
-			log.Fatalln("error in read ack", err, ca)
-			t3 = 0
+		var t3 time.Duration
+		if *ping {
+			err = mp.Write(conn)
+			if err != nil {
+				log.Fatalln("error in write conn packet", err)
+			}
+			ca, err := packets.ReadPacket(conn)
+			if _, ok := ca.(*packets.ConnackPacket); err != nil || !ok {
+				log.Fatalln("error in read ack", err, ca)
+			} else {
+				ping := buildMQTTPingPongpacket()
+				t := time.Now()
+				err = ping.Write(conn)
+				t3 = time.Since(t)
+				if err != nil {
+					log.Fatalln("error in write conn packet", err)
+				}
+				ca, err := packets.ReadPacket(conn)
+				if _, ok := ca.(*packets.PingrespPacket); err != nil || !ok {
+					log.Fatalln("error in read ping resp", err, ca)
+					t3 = 0
+				} else {
+					summqtt += t3
+					countmqtt++
+				}
+			}
 		} else {
-			summqtt += t3
-			countmqtt++
+			t := time.Now()
+			err = mp.Write(conn)
+			if err != nil {
+				log.Fatalln("error in write conn packet", err)
+			}
+			ca, err := packets.ReadPacket(conn)
+			t3 = time.Since(t)
+			if _, ok := ca.(*packets.ConnackPacket); err != nil || !ok {
+				log.Fatalln("error in read ack", err, ca)
+				t3 = 0
+			} else {
+				summqtt += t3
+				countmqtt++
+			}
 		}
 
 		//do print
