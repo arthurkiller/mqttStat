@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/arthurkiller/mqttStat/packets"
+	"github.com/arthurkiller/mqttstat/packets"
 )
 
 var tcpconn = func(address string) (net.Conn, time.Duration, error) {
