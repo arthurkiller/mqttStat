@@ -222,11 +222,11 @@ func main() {
 				ping := buildMQTTPingPongpacket()
 				t := time.Now()
 				err = ping.Write(conn)
-				t3 = time.Since(t)
 				if err != nil {
 					log.Fatalln("error in write conn packet", err)
 				}
 				ca, err := packets.ReadPacket(conn)
+				t3 = time.Since(t)
 				if _, ok := ca.(*packets.PingrespPacket); err != nil || !ok {
 					log.Fatalln("error in read ping resp", err, ca)
 					t3 = 0
